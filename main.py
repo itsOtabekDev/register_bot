@@ -19,12 +19,19 @@ def get_db_connection():
         logging.info(f"MYSQLPASSWORD: {os.getenv('MYSQLPASSWORD')}")
 
         # Используем значения по умолчанию, если переменные не определены
+        # Новый код
+        logging.info(f"MYSQLHOST: {os.getenv('MYSQLHOST')}")
+        logging.info(f"MYSQLPORT: {os.getenv('MYSQLPORT')}")
+        logging.info(f"MYSQLDATABASE: {os.getenv('MYSQLDATABASE')}")
+        logging.info(f"MYSQLUSER: {os.getenv('MYSQLUSER')}")
+        logging.info(f"MYSQLPASSWORD: {os.getenv('MYSQLPASSWORD')}")
+
         conn = pymysql.connect(
             host=os.getenv("MYSQLHOST", "mysql.railway.internal"),  # Хост из переменных или дефолт
             port=int(os.getenv("MYSQLPORT", 3306)),  # Порт по умолчанию 3306
             database=os.getenv("MYSQLDATABASE", "railway"),  # Имя базы по умолчанию
             user=os.getenv("MYSQLUSER", "root"),  # Пользователь по умолчанию
-            password=os.getenv("MYSQLPASSWORD", "")  # Пароль по умолчанию (замени на реальный)
+            password=os.getenv("MYSQLPASSWORD", "AoRREruYSPJjPZDbKoXBiDieBEJcyWzr")  # Пароль по умолчанию
         )
         return conn
     except Exception as e:
