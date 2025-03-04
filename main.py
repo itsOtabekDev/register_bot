@@ -26,19 +26,19 @@ def get_db_connection():
         database = parsed_url.path[1:]  # Убираем ведущий слеш
 
         # Отладочный вывод
-        logging.info(f"Host: {host}")
-        logging.info(f"Port: {port}")
-        logging.info(f"Database: {database}")
-        logging.info(f"User: {user}")
-        logging.info(f"Password: {password}")
+        logging.info(f"MYSQLHOST: {os.getenv('MYSQLHOST')}")
+        logging.info(f"MYSQLPORT: {os.getenv('MYSQLPORT')}")
+        logging.info(f"MYSQLDATABASE: {os.getenv('MYSQLDATABASE')}")
+        logging.info(f"MYSQLUSER: {os.getenv('MYSQLUSER')}")
+        logging.info(f"MYSQLPASSWORD: {os.getenv('MYSQLPASSWORD')}")
 
         # Создаем подключение к MySQL
         conn = pymysql.connect(
-            host=host,
-            port=port,
-            database=database,
-            user=user,
-            password=password
+            host=os.getenv("MYSQLHOST", "mysql.railway.internal"),
+            port=int(os.getenv("MYSQLPORT", 3306)),
+            database=os.getenv("MYSQLDATABASE", "railway"),
+            user=os.getenv("MYSQLUSER", "root"),
+            password=os.getenv("MYSQLPASSWORD", "AoRREruYSPJjPZDbKoXBiDieBEJcyWzr")
         )
 
         # Создаем таблицу users, если она не существует
