@@ -11,12 +11,20 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
 # Функция для создания соединения с MySQL (глобальная, чтобы избежать дублирования)
 def get_db_connection():
     try:
+        # Отладочный вывод переменных окружения
+        logging.info(f"MYSQLHOST: {os.getenv('MYSQLHOST')}")
+        logging.info(f"MYSQLPORT: {os.getenv('MYSQLPORT')}")
+        logging.info(f"MYSQLDATABASE: {os.getenv('MYSQLDATABASE')}")
+        logging.info(f"MYSQLUSER: {os.getenv('MYSQLUSER')}")
+        logging.info(f"MYSQLPASSWORD: {os.getenv('MYSQLPASSWORD')}")
+
+        # Используем значения по умолчанию, если переменные не определены
         conn = pymysql.connect(
-            host=os.getenv("MYSQLHOST"),
-            port=int(os.getenv("MYSQLPORT", 3306)),  # Порт MySQL по умолчанию 3306
-            database=os.getenv("MYSQLDATABASE"),
-            user=os.getenv("MYSQLUSER"),
-            password=os.getenv("MYSQLPASSWORD")
+            host=os.getenv("MYSQLHOST", "mysql.railway.internal"),  # Хост из переменных или дефолт
+            port=int(os.getenv("MYSQLPORT", 3306)),  # Порт по умолчанию 3306
+            database=os.getenv("MYSQLDATABASE", "railway"),  # Имя базы по умолчанию
+            user=os.getenv("MYSQLUSER", "root"),  # Пользователь по умолчанию
+            password=os.getenv("MYSQLPASSWORD", "")  # Пароль по умолчанию (замени на реальный)
         )
         return conn
     except Exception as e:
