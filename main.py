@@ -1,6 +1,7 @@
 import logging
 import pymysql
 import os
+import urllib.parse
 from telegram import ReplyKeyboardMarkup, KeyboardButton
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, ConversationHandler
 from geo_name import get_location_name
@@ -11,28 +12,52 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
 # Функция для создания соединения с MySQL (глобальная, чтобы избежать дублирования)
 def get_db_connection():
     try:
-        # Отладочный вывод переменных окружения
-        logging.info(f"MYSQLHOST: {os.getenv('MYSQLHOST')}")
-        logging.info(f"MYSQLPORT: {os.getenv('MYSQLPORT')}")
-        logging.info(f"MYSQLDATABASE: {os.getenv('MYSQLDATABASE')}")
-        logging.info(f"MYSQLUSER: {os.getenv('MYSQLUSER')}")
-        logging.info(f"MYSQLPASSWORD: {os.getenv('MYSQLPASSWORD')}")
+        # Получаем MYSQL_PUBLIC_URL
+        mysql_public_url = os.getenv("MYSQL_PUBLIC_URL")
+        if not mysql_public_url:
+            raise ValueError("MYSQL_PUBLIC_URL не определён в переменных окружения")
 
-        # Используем значения по умолчанию, если переменные не определены
-        # Новый код
-        logging.info(f"MYSQLHOST: {os.getenv('MYSQLHOST')}")
-        logging.info(f"MYSQLPORT: {os.getenv('MYSQLPORT')}")
-        logging.info(f"MYSQLDATABASE: {os.getenv('MYSQLDATABASE')}")
-        logging.info(f"MYSQLUSER: {os.getenv('MYSQLUSER')}")
-        logging.info(f"MYSQLPASSWORD: {os.getenv('MYSQLPASSWORD')}")
+        # Разбираем URL
+        parsed_url = urllib.parse.urlparse(mysql_public_url)
+        user = parsed_url.username
+        password = parsed_url.password
+        host = parsed_url.hostname
+        port = parsed_url.port or 3306  # Порт по умолчанию 3306, если не указан
+        database = parsed_url.path[1:]  # Убираем ведущий слеш
 
+        # Отладочный вывод
+        logging.info(f"Host: {host}")
+        logging.info(f"Port: {port}")
+        logging.info(f"Database: {database}")
+        logging.info(f"User: {user}")
+        logging.info(f"Password: {password}")
+
+        # Создаем подключение к MySQL
         conn = pymysql.connect(
-            host=os.getenv("MYSQLHOST", "mysql.railway.internal"),  # Хост из переменных или дефолт
-            port=int(os.getenv("MYSQLPORT", 3306)),  # Порт по умолчанию 3306
-            database=os.getenv("MYSQLDATABASE", "railway"),  # Имя базы по умолчанию
-            user=os.getenv("MYSQLUSER", "root"),  # Пользователь по умолчанию
-            password=os.getenv("MYSQLPASSWORD", "AoRREruYSPJjPZDbKoXBiDieBEJcyWzr")  # Пароль по умолчанию
+            host=host,
+            port=port,
+            database=database,
+            user=user,
+            password=password
         )
+
+        # Создаем таблицу users, если она не существует
+        cursor = conn.cursor()
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS users (
+                phone_number VARCHAR(20) PRIMARY KEY,
+                first_name VARCHAR(255),
+                last_name VARCHAR(255),
+                age INTEGER,
+                gender VARCHAR(10),
+                address TEXT,
+                latitude REAL,
+                longitude REAL
+            )
+        """)
+        conn.commit()
+        cursor.close()
+
         return conn
     except Exception as e:
         logging.error(f"Ошибка подключения к базе: {e}")
