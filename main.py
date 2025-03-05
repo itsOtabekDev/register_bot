@@ -138,6 +138,17 @@ def geolocation(update, context):
     context.user_data['longitude'] = longitude
     context.user_data['address'] = address
 
+    # Проверяем, что age — это целое число
+    age = context.user_data['age']
+    if not isinstance(age, int):
+        try:
+            age = int(age)
+            context.user_data['age'] = age
+        except (ValueError, TypeError):
+            logging.error(f"Некорректное значение возраста от пользователя {update.effective_user.id}: {age}")
+            update.message.reply_text("Xatolik yuz berdi: yoshingiz noto'g'ri formatda. Iltimos, qayta /start buyrug'ini ishga tushiring.")
+            return ConversationHandler.END
+
     # Сохраняем данные в MySQL
     cursor = conn.cursor()
     cursor.execute("INSERT INTO users (phone_number, first_name, last_name, age, gender, address, latitude, longitude) VALUES (%s, %s, %s, %s, %s, %s, %s, %s) ON DUPLICATE KEY UPDATE first_name=VALUES(first_name), last_name=VALUES(last_name), age=VALUES(age), gender=VALUES(gender), address=VALUES(address), latitude=VALUES(latitude), longitude=VALUES(longitude)", (
