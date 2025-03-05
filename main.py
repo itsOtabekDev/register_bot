@@ -9,6 +9,7 @@ from geo_name import get_location_name
 # Настройка логирования
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 
+
 # Функция для создания соединения с MySQL (глобальная, чтобы избежать дублирования)
 def get_db_connection():
     try:
@@ -26,19 +27,19 @@ def get_db_connection():
         database = parsed_url.path[1:]  # Убираем ведущий слеш
 
         # Отладочный вывод
-        logging.info(f"MYSQLHOST: {os.getenv('MYSQLHOST')}")
-        logging.info(f"MYSQLPORT: {os.getenv('MYSQLPORT')}")
-        logging.info(f"MYSQLDATABASE: {os.getenv('MYSQLDATABASE')}")
-        logging.info(f"MYSQLUSER: {os.getenv('MYSQLUSER')}")
-        logging.info(f"MYSQLPASSWORD: {os.getenv('MYSQLPASSWORD')}")
+        logging.info(f"Host: {host}")
+        logging.info(f"Port: {port}")
+        logging.info(f"Database: {database}")
+        logging.info(f"User: {user}")
+        logging.info(f"Password: {password}")
 
         # Создаем подключение к MySQL
         conn = pymysql.connect(
-            host=os.getenv("MYSQLHOST", "mysql.railway.internal"),
-            port=int(os.getenv("MYSQLPORT", 3306)),
-            database=os.getenv("MYSQLDATABASE", "railway"),
-            user=os.getenv("MYSQLUSER", "root"),
-            password=os.getenv("MYSQLPASSWORD", "AoRREruYSPJjPZDbKoXBiDieBEJcyWzr")
+            host=host,
+            port=port,
+            database=database,
+            user=user,
+            password=password
         )
 
         # Создаем таблицу users, если она не существует
@@ -63,8 +64,10 @@ def get_db_connection():
         logging.error(f"Ошибка подключения к базе: {e}")
         raise
 
+
 # Инициализация соединения (будет создаваться при необходимости)
 conn = None
+
 
 def start(update, context):
     global conn
@@ -79,6 +82,7 @@ def start(update, context):
 
     return 'PHONE_NUMBER'
 
+
 def phone_number(update, context):
     global conn
     if conn is None or not conn.open:
@@ -87,6 +91,7 @@ def phone_number(update, context):
     context.user_data['phone_number'] = phone_number
     update.message.reply_text('Rahmat! Ismingiz nima?')
     return 'FIRST_NAME'
+
 
 def first_name(update, context):
     global conn
@@ -97,6 +102,7 @@ def first_name(update, context):
     update.message.reply_text('Rahmat! Familyangiz nima?')
     return 'LAST_NAME'
 
+
 def last_name(update, context):
     global conn
     if conn is None or not conn.open:
@@ -106,14 +112,29 @@ def last_name(update, context):
     update.message.reply_text('Rahmat! Yoshingiz?')
     return 'AGE'
 
+
 def age(update, context):
     global conn
     if conn is None or not conn.open:
         conn = get_db_connection()
+
     age = update.message.text
-    context.user_data['age'] = age
-    update.message.reply_text('Rahmat! Jinsingiz: erkak/ayol?')
-    return 'GENDER'
+    try:
+        age_int = int(age)
+        if age_int < 0:
+            update.message.reply_text("Iltimos, musbat yosh kiriting (masalan, 18, 25, va hokazo). Qayta urining:")
+            return 'AGE'
+        if not (0 <= age_int <= 150):
+            update.message.reply_text("Iltimos, realistik yosh kiriting (0-150 oraliqda). Qayta urining:")
+            return 'AGE'
+        context.user_data['age'] = age_int
+        update.message.reply_text('Rahmat! Jinsingiz: erkak/ayol?')
+        return 'GENDER'
+    except ValueError:
+        logging.warning(f"Некорректный ввод возраста от пользователя {update.effective_user.id}: {age}")
+        update.message.reply_text("Iltimos, faqat raqam kiriting (masalan, 18, 25, va hokazo). Qayta urining:")
+        return 'AGE'
+
 
 def gender(update, context):
     global conn
@@ -124,8 +145,10 @@ def gender(update, context):
     reply_markup = ReplyKeyboardMarkup([
         [KeyboardButton(text="Lokatsiyanngizni ulashing", request_location=True)]
     ], resize_keyboard=True, one_time_keyboard=True)
-    context.bot.send_message(chat_id=update.effective_user.id, text="Lokatsiyanngizni ulashing:", reply_markup=reply_markup)
+    context.bot.send_message(chat_id=update.effective_user.id, text="Lokatsiyanngizni ulashing:",
+                             reply_markup=reply_markup)
     return 'GEOLOCATION'
+
 
 def geolocation(update, context):
     global conn
@@ -138,29 +161,33 @@ def geolocation(update, context):
     context.user_data['longitude'] = longitude
     context.user_data['address'] = address
 
-    # Проверяем, что age — это целое число
+    # Проверяем, что age — это целое число (дополнительная проверка на случай ошибок)
     age = context.user_data['age']
     if not isinstance(age, int):
         try:
             age = int(age)
             context.user_data['age'] = age
+            logging.info(f"Age converted to: {age}, type: {type(age)}")
         except (ValueError, TypeError):
             logging.error(f"Некорректное значение возраста от пользователя {update.effective_user.id}: {age}")
-            update.message.reply_text("Xatolik yuz berdi: yoshingiz noto'g'ri formatda. Iltimos, qayta /start buyrug'ini ishga tushiring.")
+            update.message.reply_text(
+                "Xatolik yuz berdi: yoshingiz noto'g'ri formatda. Iltimos, qayta /start buyrug'ini ishga tushiring.")
             return ConversationHandler.END
 
     # Сохраняем данные в MySQL
     cursor = conn.cursor()
-    cursor.execute("INSERT INTO users (phone_number, first_name, last_name, age, gender, address, latitude, longitude) VALUES (%s, %s, %s, %s, %s, %s, %s, %s) ON DUPLICATE KEY UPDATE first_name=VALUES(first_name), last_name=VALUES(last_name), age=VALUES(age), gender=VALUES(gender), address=VALUES(address), latitude=VALUES(latitude), longitude=VALUES(longitude)", (
-        context.user_data['phone_number'],
-        context.user_data['first_name'],
-        context.user_data['last_name'],
-        context.user_data['age'],
-        context.user_data['gender'],
-        context.user_data['address'],
-        context.user_data['latitude'],
-        context.user_data['longitude'],
-    ))
+    cursor.execute(
+        "INSERT INTO users (phone_number, first_name, last_name, age, gender, address, latitude, longitude) VALUES (%s, %s, %s, %s, %s, %s, %s, %s) ON DUPLICATE KEY UPDATE first_name=VALUES(first_name), last_name=VALUES(last_name), age=VALUES(age), gender=VALUES(gender), address=VALUES(address), latitude=VALUES(latitude), longitude=VALUES(longitude)",
+        (
+            context.user_data['phone_number'],
+            context.user_data['first_name'],
+            context.user_data['last_name'],
+            context.user_data['age'],
+            context.user_data['gender'],
+            context.user_data['address'],
+            context.user_data['latitude'],
+            context.user_data['longitude'],
+        ))
     conn.commit()
     logging.info("User Registered")
     update.message.reply_text("Ro'yxatdan o'tganingiz uchun Rahmat!")
@@ -174,12 +201,14 @@ def geolocation(update, context):
         """)
     return ConversationHandler.END
 
+
 def cancel(update, context):
     global conn
     if conn and conn.open:
         conn.close()
     update.message.reply_text(text='Bekor qilindi!')
     return ConversationHandler.END
+
 
 def main():
     global conn
