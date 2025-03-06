@@ -3,7 +3,7 @@ import pymysql
 import os
 import urllib.parse
 from telegram import BotCommand, ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
-from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, ConversationHandler
+from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, ConversationHandler, CallbackQueryHandler
 from geo_name import get_location_name
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
@@ -63,7 +63,10 @@ def get_db_connection():
 
 # Инициализация соединения (будет создаваться при необходимости)
 conn = None
-
+inline_buttons = [
+    [InlineKeyboardButton(text="Erkak",callback_data="Erkak")],
+    [InlineKeyboardButton(text="Ayol", callback_data="Ayol")]
+]
 def start(update, context):
     # menu бота
     commands = [
@@ -149,7 +152,7 @@ def age(update, context):
             update.message.reply_text("Iltimos, realistik yosh kiriting (0-150 oraliqda). Qayta urining:")
             return 'AGE'
         context.user_data['age'] = age_int
-        update.message.reply_text('Rahmat! Jinsingiz: erkak/ayol?')
+        update.message.reply_text(text='Rahmat! Jinsingiz: erkak/ayol?',)
         return 'GENDER'
     except ValueError:
         logging.warning(f"Некорректный ввод возраста от пользователя {update.effective_user.id}: {age}")
@@ -161,13 +164,14 @@ def gender(update, context):
     global conn
     if conn is None or not conn.open:
         conn = get_db_connection()
-    gender = update.message.text
+    query = update.callback_query
+    query.answer()
+    gender = query.data
     context.user_data['gender'] = gender
     reply_markup = ReplyKeyboardMarkup([
         [KeyboardButton(text="Lokatsiyanngizni ulashing", request_location=True)]
     ], resize_keyboard=True, one_time_keyboard=True)
-    context.bot.send_message(chat_id=update.effective_user.id, text="Lokatsiyanngizni ulashing:",
-                             reply_markup=reply_markup)
+    context.bot.send_message(chat_id=update.effective_user.id, text="Lokatsiyanngizni ulashing:",reply_markup=reply_markup)
     return 'GEOLOCATION'
 
 
@@ -248,7 +252,7 @@ def main():
                 'FIRST_NAME': [MessageHandler(Filters.text & ~Filters.command, first_name)],
                 'LAST_NAME': [MessageHandler(Filters.text & ~Filters.command, last_name)],
                 'AGE': [MessageHandler(Filters.text & ~Filters.command, age)],
-                'GENDER': [MessageHandler(Filters.text & ~Filters.command, gender)],
+                'GENDER': [CallbackQueryHandler(gender)],
                 'GEOLOCATION': [MessageHandler(Filters.location & ~Filters.command, geolocation)],
             },
             fallbacks=[CommandHandler('cancel', cancel)]
