@@ -2,29 +2,25 @@ import logging
 import pymysql
 import os
 import urllib.parse
-from telegram import ReplyKeyboardMarkup, KeyboardButton
+from telegram import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, ConversationHandler
 from geo_name import get_location_name
 
-# Настройка логирования
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 
 
-# Функция для создания соединения с MySQL (глобальная, чтобы избежать дублирования)
 def get_db_connection():
     try:
-        # Получаем MYSQL_PUBLIC_URL
         mysql_public_url = os.getenv("MYSQL_PUBLIC_URL")
         if not mysql_public_url:
             raise ValueError("MYSQL_PUBLIC_URL не определён в переменных окружения")
 
-        # Разбираем URL
         parsed_url = urllib.parse.urlparse(mysql_public_url)
         user = parsed_url.username
         password = parsed_url.password
         host = parsed_url.hostname
-        port = parsed_url.port or 3306  # Порт по умолчанию 3306, если не указан
-        database = parsed_url.path[1:]  # Убираем ведущий слеш
+        port = parsed_url.port or 3306
+        database = parsed_url.path[1:]
 
         # Отладочный вывод
         logging.info(f"Host: {host}")
@@ -87,10 +83,30 @@ def phone_number(update, context):
     global conn
     if conn is None or not conn.open:
         conn = get_db_connection()
-    phone_number = update.message.contact.phone_number
-    context.user_data['phone_number'] = phone_number
-    update.message.reply_text('Rahmat! Ismingiz nima?')
-    return 'FIRST_NAME'
+
+    # Если получен контакт
+    if update.message.contact:
+        phone_number = update.message.contact.phone_number
+        context.user_data['phone_number'] = phone_number
+        update.message.reply_text('Rahmat! Ismingiz nima?')
+        return 'FIRST_NAME'
+    # Если введён текст
+    else:
+        user_text = update.message.text
+        if user_text.isdigit():
+            context.user_data['phone_number'] = user_text
+            update.message.reply_text('Rahmat! Ismingiz nima?')
+            return 'FIRST_NAME'
+        else:
+            reply_markup = ReplyKeyboardMarkup([
+                [KeyboardButton(text="Telefon kontaktinngizni ulashing", request_contact=True)]
+            ], resize_keyboard=True, one_time_keyboard=True)
+            context.bot.send_message(
+                chat_id=update.message.chat_id,
+                text='Siz raqam kiritmadingiz. Raqam kiriting yoki telefon kontaktinngizni ulashing:',
+                reply_markup=reply_markup
+            )
+            return 'PHONE_NUMBER'  # Остаёмся в состоянии PHONE_NUMBER
 
 
 def first_name(update, context):
@@ -214,13 +230,16 @@ def main():
     global conn
     try:
         conn = get_db_connection()
-        updater = Updater(token="8184862679:AAFqSCRU_GGR3ukBLzwFKC_Fn4XjmXp2Mj8")
+        updater = Updater(token="7280611441:AAFnaRxjEnoIx_PUIiLr2TeUvGmCNqLEZ9s")
         dispatcher = updater.dispatcher
 
         conv_handler = ConversationHandler(
             entry_points=[CommandHandler('start', start)],
             states={
-                'PHONE_NUMBER': [MessageHandler(Filters.contact & ~Filters.command, phone_number)],
+                'PHONE_NUMBER': [
+                    MessageHandler(Filters.contact & ~Filters.command, phone_number),  # Контакт
+                    MessageHandler(Filters.text & ~Filters.command, phone_number)  # Текст
+                ],
                 'FIRST_NAME': [MessageHandler(Filters.text & ~Filters.command, first_name)],
                 'LAST_NAME': [MessageHandler(Filters.text & ~Filters.command, last_name)],
                 'AGE': [MessageHandler(Filters.text & ~Filters.command, age)],
@@ -237,6 +256,7 @@ def main():
     finally:
         if conn and conn.open:
             conn.close()
+
 
 if __name__ == '__main__':
     main()
