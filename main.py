@@ -67,7 +67,7 @@ conn = None
 def start(update, context):
     # menu бота
     commands = [
-        BotCommand(command='start', description="botga start berish!")
+        BotCommand(command='start', description="botga start berish!"),
         BotCommand(command='cancel', description="bekor qilish!")
     ]
     context.bot.set_my_commands(commands=commands)
