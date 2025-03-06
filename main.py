@@ -1,13 +1,18 @@
 import logging
 import pymysql
 import os
+import sys
 import urllib.parse
 from telegram import BotCommand, ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, ConversationHandler, CallbackQueryHandler
 from geo_name import get_location_name
 
-logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
-
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(levelname)s: %(message)s',  # Упрощённый формат
+    handlers=[logging.StreamHandler(sys.stdout)]
+)
+logger = logging.getLogger(__name__)
 
 def get_db_connection():
     try:
