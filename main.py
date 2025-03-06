@@ -2,7 +2,7 @@ import logging
 import pymysql
 import os
 import urllib.parse
-from telegram import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
+from telegram import BotCommand, ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, ConversationHandler
 from geo_name import get_location_name
 
@@ -64,8 +64,13 @@ def get_db_connection():
 # Инициализация соединения (будет создаваться при необходимости)
 conn = None
 
-
 def start(update, context):
+    # menu бота
+    commands = [
+        BotCommand(command='start', description="botga start berish!")
+        BotCommand(command='cancel', description="bekor qilish!")
+    ]
+    context.bot.set_my_commands(commands=commands)
     global conn
     if conn is None or not conn.open:
         conn = get_db_connection()  # Создаём соединение, если его нет или оно закрыто
@@ -230,7 +235,7 @@ def main():
     global conn
     try:
         conn = get_db_connection()
-        updater = Updater(token="7280611441:AAFnaRxjEnoIx_PUIiLr2TeUvGmCNqLEZ9s")
+        updater = Updater(token="8184862679:AAFqSCRU_GGR3ukBLzwFKC_Fn4XjmXp2Mj8")
         dispatcher = updater.dispatcher
 
         conv_handler = ConversationHandler(
