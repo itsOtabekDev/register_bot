@@ -152,7 +152,11 @@ def age(update, context):
             update.message.reply_text("Iltimos, realistik yosh kiriting (0-150 oraliqda). Qayta urining:")
             return 'AGE'
         context.user_data['age'] = age_int
-        update.message.reply_text(text='Rahmat! Jinsingiz: erkak/ayol?',)
+        context.bot.send_message(
+            chat_id=update.message.chat_id,
+            text='Rahmat! Jinsingiz: erkak/ayol?',
+            reply_markup=InlineKeyboardMarkup(inline_buttons)
+        )
         return 'GENDER'
     except ValueError:
         logging.warning(f"Некорректный ввод возраста от пользователя {update.effective_user.id}: {age}")
