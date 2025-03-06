@@ -82,8 +82,7 @@ def start(update, context):
         [KeyboardButton(text="Telefon kontaktinngizni ulashing", request_contact=True)]
     ], resize_keyboard=True, one_time_keyboard=True)
     context.bot.send_message(chat_id=update.effective_user.id, text=reply_text, reply_markup=reply_markup)
-    logging.info(f"user - {update.effective_user.id} started")
-
+    logging.info(f"user_name - {update.effective_user.username}, user_id - {update.effective_user.id} sent command /started")
     return 'PHONE_NUMBER'
 
 
@@ -96,11 +95,13 @@ def phone_number(update, context):
     if update.message.contact:
         phone_number = update.message.contact.phone_number
         context.user_data['phone_number'] = phone_number
+        logging.info(f"user_name - {update.effective_user.username}, user_id - {update.effective_user.id} sent contact: {phone_number}")
         update.message.reply_text('Rahmat! Ismingiz nima?')
         return 'FIRST_NAME'
     # Если введён текст
     else:
         user_text = update.message.text
+        logging.info(f"user_name - {update.effective_user.username}, user_id - {update.effective_user.id} sent text: {user_text}")
         if user_text.isdigit():
             context.user_data['phone_number'] = user_text
             update.message.reply_text('Rahmat! Ismingiz nima?')
@@ -123,6 +124,7 @@ def first_name(update, context):
         conn = get_db_connection()
     first_name = update.message.text
     context.user_data['first_name'] = first_name
+    logging.info(f"user_name - {update.effective_user.username}, user_id - {update.effective_user.id} sent first name: {first_name}")
     update.message.reply_text('Rahmat! Familyangiz nima?')
     return 'LAST_NAME'
 
@@ -133,6 +135,7 @@ def last_name(update, context):
         conn = get_db_connection()
     last_name = update.message.text
     context.user_data['last_name'] = last_name
+    logging.info(f"user_name - {update.effective_user.username}, user_id - {update.effective_user.id} sent last name: {last_name}")
     update.message.reply_text('Rahmat! Yoshingiz?')
     return 'AGE'
 
@@ -141,8 +144,8 @@ def age(update, context):
     global conn
     if conn is None or not conn.open:
         conn = get_db_connection()
-
     age = update.message.text
+    logging.info(f"user - {update.effective_user.username}, user_id - {update.effective_user.id} sent age {age}")
     try:
         age_int = int(age)
         if age_int < 0:
@@ -159,7 +162,7 @@ def age(update, context):
         )
         return 'GENDER'
     except ValueError:
-        logging.warning(f"Некорректный ввод возраста от пользователя {update.effective_user.id}: {age}")
+        logging.warning(f"Некорректный ввод возраста от пользователя {update.effective_user.username}, user_id - {update.effective_user.id}: {age}")
         update.message.reply_text("Iltimos, faqat raqam kiriting (masalan, 18, 25, va hokazo). Qayta urining:")
         return 'AGE'
 
@@ -172,6 +175,7 @@ def gender(update, context):
     query.answer()
     gender = query.data
     context.user_data['gender'] = gender
+    logging.info(f"user_name - {update.effective_user.username}, user_id - {update.effective_user.id} selected gender: {gender}")
     reply_markup = ReplyKeyboardMarkup([
         [KeyboardButton(text="Lokatsiyanngizni ulashing", request_location=True)]
     ], resize_keyboard=True, one_time_keyboard=True)
@@ -189,16 +193,15 @@ def geolocation(update, context):
     context.user_data['latitude'] = latitude
     context.user_data['longitude'] = longitude
     context.user_data['address'] = address
-
-    # Проверяем, что age — это целое число (дополнительная проверка на случай ошибок)
+    logging.info(f"user_name - {update.effective_user.username}, user_id - {update.effective_user.id} sent location: lat={latitude}, lon={longitude}, address={address}")
     age = context.user_data['age']
     if not isinstance(age, int):
         try:
             age = int(age)
             context.user_data['age'] = age
-            logging.info(f"Age converted to: {age}, type: {type(age)}")
+            logging.info(f"user_name - {update.effective_user.username}, user_id - {update.effective_user.id} Age converted to: {age}, type: {type(age)}")
         except (ValueError, TypeError):
-            logging.error(f"Некорректное значение возраста от пользователя {update.effective_user.id}: {age}")
+            logging.error(f"Некорректное значение возраста от пользователя {update.effective_user.username}, user_id - {update.effective_user.id} : {age}")
             update.message.reply_text(
                 "Xatolik yuz berdi: yoshingiz noto'g'ri formatda. Iltimos, qayta /start buyrug'ini ishga tushiring.")
             return ConversationHandler.END
@@ -232,6 +235,7 @@ def geolocation(update, context):
 
 
 def cancel(update, context):
+    logging.info(f"user_name - {update.effective_user.username}, user_id - {update.effective_user.id} sent command: /cancel")
     global conn
     if conn and conn.open:
         conn.close()
